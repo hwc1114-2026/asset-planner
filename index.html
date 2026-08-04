@@ -113,9 +113,10 @@
   .head-del{position:absolute;top:6px;right:6px;color:var(--ink-soft);}
   .head-del:hover{background:#FBEAE8;color:var(--danger);}
   .price-cell{display:flex;gap:4px;align-items:center;justify-content:flex-end;}
-  .pay-cell{display:flex;gap:4px;align-items:center;}
-  .pay-cell select{flex:0 0 62px;padding:6px 4px;font-size:12.5px;}
-  .pay-cell input{flex:1;min-width:56px;}
+  .pay-cell{display:flex;flex-direction:column;gap:3px;}
+  .pay-cell select{width:100%;padding:5px 4px;font-size:12.5px;}
+  .pay-cell input{width:100%;}
+  .stock-table td:not(.metric-label), .stock-table th:not(.metric-label){border-left:1px solid var(--line);}
   .price-input{font-size:19px;font-weight:700;}
   .price-updated{font-size:10px;color:var(--ink-soft);text-align:right;margin-top:2px;}
   .section-divider td{background:var(--band-gray) !important;font-weight:600;color:var(--ink);font-size:12px;padding:10px 12px;letter-spacing:.3px;position:sticky;left:0;}
@@ -146,9 +147,11 @@
 
   @media (max-width:900px){
     .app{flex-direction:column;}
-    .sidebar{width:100%;display:flex;padding:14px 12px;border-right:none;border-bottom:1px solid var(--line);overflow-x:auto;}
+    .sidebar{width:100%;display:flex;align-items:center;padding:12px;border-right:none;border-bottom:1px solid var(--line);}
     .logo{display:none;}
-    .nav-btn{width:auto;white-space:nowrap;margin-right:6px;margin-bottom:0;}
+    #syncStatus{display:none;}
+    .sidebar nav{display:flex;gap:6px;overflow-x:auto;flex:1;}
+    .nav-btn{width:auto;white-space:nowrap;flex-shrink:0;margin-right:0;margin-bottom:0;}
     .stats{grid-template-columns:repeat(2,1fr);}
     main{padding:20px 14px 70px;}
   }
@@ -210,7 +213,7 @@
         <table class="stock-table" id="stockTable"></table>
       </div>
       <div id="stockEmpty" class="empty" style="display:none;">目前沒有股票資料，點選「＋ 新增股票」開始建立</div>
-      <p class="note">帳面市值 = 張數 × 1000 × 即時股價。「第1～4次配息」可分別設定月份與每股金額，最多四次、只用到幾次就填幾次，下方每月配息會自動用「該次金額 × 張數 × 1000」算好，不用逐月手動輸入。「↻ 更新現價」會優先抓取每日官方收盤價（穩定可用），若能連上證交所即時行情也會一併嘗試。若這個檔案是用瀏覽器直接開啟本機檔案（file://）在使用，部分即時行情來源會因安全限制抓不到；跟你之前的其他工具一樣部署到 GitHub Pages（https://）之後成功率會提高很多。抓不到時仍可手動輸入，不影響其他功能。</p>
+      <p class="note">帳面市值 = 張數 × 1000 × 即時股價。「股息發放1～4」可分別記錄每次配息的月份與每股金額，僅供參考，最多四次、用到幾次填幾次。下方「每月實際配息金額」因為張數常會變動，改回手動輸入，不會自動套公式計算。「↻ 更新現價」會優先抓取每日官方收盤價（穩定可用），若能連上證交所即時行情也會一併嘗試。若這個檔案是用瀏覽器直接開啟本機檔案（file://）在使用，部分即時行情來源會因安全限制抓不到；跟你之前的其他工具一樣部署到 GitHub Pages（https://）之後成功率會提高很多。抓不到時仍可手動輸入，不影響其他功能。</p>
     </section>
 
     <!-- ===== 定存 ===== -->
@@ -235,6 +238,7 @@
           <thead>
             <tr>
               <th>銀行</th><th>幣別</th><th>本金</th><th>起存日</th><th>到期日</th>
+              <th class="num">年限（年）</th>
               <th class="num">利率（%）</th>
               <th class="num">利息</th><th class="num">領回本息</th>
               <th class="num total-col">台幣等值本息</th><th></th>
@@ -243,7 +247,7 @@
           <tbody id="depositBody"></tbody>
           <tfoot>
             <tr>
-              <td colspan="6" class="label">合計</td>
+              <td colspan="7" class="label">合計</td>
               <td></td><td></td>
               <td class="num" id="depFootTwd">NT$0</td><td></td>
             </tr>
@@ -251,7 +255,7 @@
         </table>
       </div>
       <div id="depositEmpty" class="empty" style="display:none;">目前沒有定存資料，點選「＋ 新增一筆」開始建立</div>
-      <p class="note">利息試算：本金 × 利率 ÷ 100 × 天數 ÷ 365。非台幣定存會依匯率換算成台幣等值以利加總，實際到期結算以銀行為準。</p>
+      <p class="note">利息試算：本金 × 年利率 × 存款年限。「年限」可直接輸入（例如 3、0.5），若留空則自動用起存日到到期日的天數 ÷ 365 估算年限。非台幣定存會依匯率換算成台幣等值以利加總，實際到期結算以銀行為準。</p>
     </section>
 
     <!-- ===== 活存 ===== -->
@@ -314,41 +318,83 @@ const ROOT = 'assetPlanner';
 let isApplyingRemote = false;
 const lastPushed = {stocks:null, deposits:null, checking:null, fx:null};
 const saveTimers = {};
-const syncedOnce = {stocks:false, deposits:false, checking:false, fx:false};
 
+// Writes are debounced; while a write is queued (or in flight) for a given
+// kind, incoming snapshots for that kind are ignored. Without this, a stale
+// echo of an earlier save (or the very first snapshot from a brand-new
+// database) can arrive mid-edit and silently overwrite what's currently
+// being typed — which is exactly what caused entered data to "revert".
 function debouncedSave(kind, getValue){
   if(isApplyingRemote) return;
   clearTimeout(saveTimers[kind]);
   saveTimers[kind]=setTimeout(()=>{
     const val=getValue();
     lastPushed[kind]=JSON.stringify(val);
-    db.ref(ROOT+'/'+kind).set(val).catch(()=>{
+    db.ref(ROOT+'/'+kind).set(val).then(()=>{
+      saveTimers[kind]=null;
+    }).catch(()=>{
+      saveTimers[kind]=null;
       const el=document.getElementById('syncStatus');
       if(el) el.textContent='☁ 同步失敗，請檢查網路';
     });
   }, 500);
 }
-function markSynced(){
-  if(Object.values(syncedOnce).every(Boolean)){
-    const el=document.getElementById('syncStatus');
-    if(el) el.textContent='☁ 已同步（跨裝置即時更新）';
-  }
-}
-function listenRemote(kind, onData){
+
+function attachRemoteListener(kind, onData){
   db.ref(ROOT+'/'+kind).on('value', snap=>{
+    if(saveTimers[kind]) return; // a local save is queued/in flight — don't clobber it
     const val=snap.val();
     const json=JSON.stringify(val==null?(kind==='fx'?{}:[]):val);
-    if(json===lastPushed[kind]) { syncedOnce[kind]=true; markSynced(); return; }
+    if(json===lastPushed[kind]) return;
     isApplyingRemote=true;
     onData(val);
     lastPushed[kind]=json;
     isApplyingRemote=false;
-    syncedOnce[kind]=true;
-    markSynced();
   }, ()=>{
     const el=document.getElementById('syncStatus');
     if(el) el.textContent='☁ 連線失敗，請檢查網路';
   });
+}
+
+/* Load whatever is already on the server ONCE, synchronously into the
+   initial render, before any listener is attached and before the user
+   can interact with an empty table. This is the fix for data appearing
+   to "revert to blank" — that happened because the continuous listener's
+   first callback (firing with the pre-existing server state) could arrive
+   after the user had already started typing into an empty local table,
+   wiping out those first edits. */
+async function initSync(){
+  const [stocksSnap, depositsSnap, checkingSnap, fxSnap] = await Promise.all([
+    db.ref(ROOT+'/stocks').once('value').catch(()=>null),
+    db.ref(ROOT+'/deposits').once('value').catch(()=>null),
+    db.ref(ROOT+'/checking').once('value').catch(()=>null),
+    db.ref(ROOT+'/fx').once('value').catch(()=>null),
+  ]);
+
+  stocks = (stocksSnap && stocksSnap.val()) || [];
+  deposits = (depositsSnap && depositsSnap.val()) || [];
+  checking = (checkingSnap && checkingSnap.val()) || [];
+  const fxVal = fxSnap && fxSnap.val();
+  fxManual = (fxVal && Object.keys(fxVal).length) ? fxVal : {TWD:1};
+
+  lastPushed.stocks=JSON.stringify(stocks);
+  lastPushed.deposits=JSON.stringify(deposits);
+  lastPushed.checking=JSON.stringify(checking);
+  lastPushed.fx=JSON.stringify(fxManual);
+
+  renderStockTable();
+  renderFxBar();
+  renderDepositTable();
+  renderCheckingTable();
+  renderOverview();
+
+  const statusEl=document.getElementById('syncStatus');
+  if(statusEl) statusEl.textContent='☁ 已同步（跨裝置即時更新）';
+
+  attachRemoteListener('stocks', val=>{ stocks = val || []; renderStockTable(); });
+  attachRemoteListener('deposits', val=>{ deposits = val || []; renderDepositTable(); });
+  attachRemoteListener('checking', val=>{ checking = val || []; renderCheckingTable(); });
+  attachRemoteListener('fx', val=>{ fxManual = (val && Object.keys(val).length) ? val : {TWD:1}; renderFxBar(); patchDeposits(); patchChecking(); });
 }
 
 /* ---------- shared helpers ---------- */
@@ -378,7 +424,7 @@ document.querySelectorAll('.nav-btn').forEach(btn=>{
 let stocks = [];
 
 function addStock(){
-  stocks.push({code:'', name:'', price:'', dividend:'', payTimes:'', lots:'', payments:[{month:'',amount:''},{month:'',amount:''},{month:'',amount:''},{month:'',amount:''}], priceUpdatedAt:''});
+  stocks.push({code:'', name:'', price:'', dividend:'', payTimes:'', lots:'', payments:[{month:'',amount:''},{month:'',amount:''},{month:'',amount:''},{month:'',amount:''}], months:new Array(12).fill(''), priceUpdatedAt:''});
   renderStockTable();
 }
 function deleteStock(i){ stocks.splice(i,1); renderStockTable(); }
@@ -392,15 +438,10 @@ function updateStockPayment(i,k,key,val){
   stocks[i].payments[k][key]=val;
   patchStocks();
 }
-function monthlyAmounts(s){
-  const shares=num(s.lots)*1000;
-  const amounts=new Array(12).fill(0);
-  (s.payments||[]).forEach(p=>{
-    const m=parseInt(p.month,10);
-    const amt=num(p.amount);
-    if(m>=1 && m<=12 && amt) amounts[m-1]+=amt*shares;
-  });
-  return amounts;
+function updateStockMonth(i,m,val){
+  if(!stocks[i].months) stocks[i].months=new Array(12).fill('');
+  stocks[i].months[m]=val;
+  patchStocks();
 }
 
 const STOCK_FIELDS = [
@@ -467,9 +508,10 @@ function renderStockTable(){
   tbody.innerHTML+=mvRow;
 
   // up to 4 payments — each with its own month + per-share amount, since
-  // quarterly (or fewer) payouts are rarely equal in practice
+  // quarterly (or fewer) payouts are rarely equal in practice (informational;
+  // the monthly grid below is filled in manually since 張數 can change month to month)
   for(let k=0;k<4;k++){
-    let row=`<tr><td class="metric-label">第${k+1}次配息</td>`;
+    let row=`<tr><td class="metric-label">股息發放${k+1}</td>`;
     stocks.forEach((s,i)=>{
       const p=(s.payments&&s.payments[k])?s.payments[k]:{month:'',amount:''};
       let monthOpts='<option value="">月份</option>';
@@ -477,7 +519,7 @@ function renderStockTable(){
       row+=`<td>
         <div class="pay-cell">
           <select onchange="updateStockPayment(${i},${k},'month',this.value)">${monthOpts}</select>
-          <input type="number" placeholder="元/股" value="${p.amount}" oninput="updateStockPayment(${i},${k},'amount',this.value)">
+          <input type="number" step="0.001" placeholder="元/股" value="${p.amount}" oninput="updateStockPayment(${i},${k},'amount',this.value)">
         </div>
       </td>`;
     });
@@ -487,14 +529,15 @@ function renderStockTable(){
 
   // divider
   const colspan=stocks.length+2;
-  tbody.innerHTML+=`<tr class="section-divider"><td colspan="${colspan}">每月實際配息金額</td></tr>`;
+  tbody.innerHTML+=`<tr class="section-divider"><td colspan="${colspan}">每月實際配息金額（手動輸入）</td></tr>`;
 
-  // month rows — auto-calculated from the 4 payment slots above, zebra striped
+  // month rows — manually entered (share count can change month to month, so this isn't auto-derived)
   MONTHS.forEach((label,m)=>{
     const zebraCls = (m%2===1) ? ' row-zebra-b' : '';
     let row=`<tr class="${zebraCls.trim()}"><td class="metric-label">${label}</td>`;
     stocks.forEach((s,i)=>{
-      row+=`<td class="num"><span class="computed" id="month-${i}-${m}">NT$0</span></td>`;
+      const v=(s.months&&s.months[m])||'';
+      row+=`<td class="num"><input type="number" placeholder="0" value="${v}" oninput="updateStockMonth(${i},${m},this.value)"></td>`;
     });
     row+=`<td class="num total-col computed" id="mtotal-${m}">NT$0</td></tr>`;
     tbody.innerHTML+=row;
@@ -531,11 +574,10 @@ function patchStocks(){
     if(mvEl) mvEl.textContent=twd(mv);
 
     let yearTotal=0;
-    const amounts=monthlyAmounts(s);
-    amounts.forEach((val,m)=>{
+    const monthsArr = s.months || new Array(12).fill('');
+    monthsArr.forEach((v,m)=>{
+      const val=num(v);
       yearTotal+=val; monthTotals[m]+=val;
-      const cell=document.getElementById(`month-${i}-${m}`);
-      if(cell) cell.textContent=twd(val);
     });
     grandYear+=yearTotal;
     const yrEl=document.getElementById('yr-'+i);
@@ -722,12 +764,13 @@ function dayDiff(start,end){
   return diff>0?diff:0;
 }
 function calcDepositInterest(r){
-  const p=num(r.principal), rate=num(r.rate), days=dayDiff(r.start,r.end);
-  if(!days||!p||!rate) return 0;
-  return p*rate/100*days/365;
+  const p=num(r.principal), rate=num(r.rate);
+  const years = (r.years!=='' && r.years!=null) ? num(r.years) : (dayDiff(r.start,r.end)/365);
+  if(!years||!p||!rate) return 0;
+  return p*rate/100*years;
 }
 
-function addDeposit(){ deposits.push({bank:'',currency:'TWD',start:'',end:'',principal:'',rate:''}); renderDepositTable(); }
+function addDeposit(){ deposits.push({bank:'',currency:'TWD',start:'',end:'',years:'',principal:'',rate:''}); renderDepositTable(); }
 function deleteDeposit(i){ deposits.splice(i,1); renderDepositTable(); }
 function updateDeposit(i,key,val){
   deposits[i][key]=val;
@@ -755,6 +798,7 @@ function renderDepositTable(){
       <td><input type="text" inputmode="decimal" placeholder="0" value="${fmtMoneyInput(r.principal)}" onfocus="this.value=deposits[${i}].principal||''" oninput="updateDeposit(${i},'principal',this.value.replace(/[^0-9.]/g,''))" onblur="this.value=fmtMoneyInput(deposits[${i}].principal)"></td>
       <td><input type="date" value="${r.start}" onchange="updateDeposit(${i},'start',this.value)"></td>
       <td><input type="date" value="${r.end}" onchange="updateDeposit(${i},'end',this.value)"></td>
+      <td class="num"><input type="number" step="0.01" placeholder="自動" value="${r.years}" oninput="updateDeposit(${i},'years',this.value)"></td>
       <td class="num"><input type="number" step="0.001" placeholder="0.00" value="${r.rate}" oninput="updateDeposit(${i},'rate',this.value)"></td>
       <td class="num computed" id="dep-interest-${i}">0</td>
       <td class="num computed" id="dep-payout-${i}">0</td>
@@ -860,7 +904,7 @@ function patchChecking(){
    ===================================================== */
 function renderOverview(){
   const stockValue = stocks.reduce((a,s)=>a+num(s.lots)*1000*num(s.price),0);
-  const dividendTotal = stocks.reduce((a,s)=>a+monthlyAmounts(s).reduce((x,v)=>x+v,0),0);
+  const dividendTotal = stocks.reduce((a,s)=>a+((s.months||[]).reduce((x,v)=>x+num(v),0)),0);
 
   let depositTwd=0;
   deposits.forEach(r=>{
@@ -897,18 +941,8 @@ function renderOverview(){
   }
 }
 
-/* ---------- initial render (shows immediately, then Firebase fills in) ---------- */
-renderStockTable();
-renderFxBar();
-renderDepositTable();
-renderCheckingTable();
-renderOverview();
-
-/* ---------- attach Firebase listeners (cross-device sync) ---------- */
-listenRemote('stocks', val=>{ stocks = val || []; renderStockTable(); });
-listenRemote('deposits', val=>{ deposits = val || []; renderDepositTable(); });
-listenRemote('checking', val=>{ checking = val || []; renderCheckingTable(); });
-listenRemote('fx', val=>{ fxManual = (val && Object.keys(val).length) ? val : {TWD:1}; renderFxBar(); patchDeposits(); patchChecking(); });
+/* ---------- start sync (loads real data before the table becomes interactive) ---------- */
+initSync();
 </script>
 </body>
 </html>

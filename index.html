@@ -1,0 +1,913 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>資產整理總表</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap');
+
+  :root{
+    --bg:#E9EAEC;
+    --card:#FFFFFF;
+    --ink:#2B2B30;
+    --ink-soft:#6B6B72;
+    --line:#DEDFE3;
+    --accent:#8C7CF0;
+    --accent-soft:#EFECFD;
+    --mint:#CDEDE0;
+    --mint-ink:#2F6B54;
+    --peach:#FBE3D6;
+    --peach-ink:#8A5335;
+    --sky:#DCEBFA;
+    --sky-ink:#385E82;
+    --sand:#F3E7C9;
+    --sand-ink:#82692B;
+    --lav:#E3DEF7;
+    --lav-ink:#5949B8;
+    --danger:#D9695F;
+    --band-gray:#DCDDE1;
+    --gray-base:#FAFAFB;
+    --gray-alt:#F1F1F3;
+  }
+
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);font-family:'Inter',sans-serif;color:var(--ink);}
+  .app{display:flex;min-height:100vh;}
+
+  .sidebar{width:200px;flex-shrink:0;padding:28px 16px;border-right:1px solid var(--line);}
+  .logo{font-family:'Noto Serif TC',serif;font-weight:700;font-size:19px;margin:0 8px 26px;letter-spacing:0.5px;}
+  .nav-btn{display:block;width:100%;text-align:left;background:none;border:none;padding:11px 12px;border-radius:10px;
+    font-size:14px;font-weight:500;font-family:'Inter',sans-serif;color:var(--ink-soft);cursor:pointer;margin-bottom:4px;
+    transition:background .15s, color .15s;}
+  .nav-btn:hover{background:#F2F2F4;}
+  .nav-btn.active{background:var(--ink);color:#fff;font-weight:600;}
+
+  main{flex:1;min-width:0;padding:32px 28px 90px;}
+  .tab-panel{display:none;}
+  .tab-panel.active{display:block;max-width:1260px;margin:0 auto;}
+
+  .panel-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:22px;flex-wrap:wrap;gap:12px;}
+  .panel-header h1{font-family:'Noto Serif TC',serif;font-weight:700;font-size:24px;margin:0;}
+  .panel-header p{margin:4px 0 0;color:var(--ink-soft);font-size:13px;}
+
+  .btn{background:var(--ink);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-size:13.5px;
+    font-weight:600;font-family:'Inter',sans-serif;cursor:pointer;}
+  .btn:hover{opacity:.85;}
+  .btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);}
+  .btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  .status-text{font-size:11.5px;color:var(--ink-soft);}
+
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;margin-bottom:22px;}
+  .stat{background:var(--card);border-radius:16px;padding:18px 20px;border:1px solid var(--line);}
+  .stat .label{font-size:12px;color:var(--ink-soft);font-weight:500;margin-bottom:8px;}
+  .stat .value{font-family:'Noto Serif TC',serif;font-size:24px;font-weight:700;}
+  .stat .unit{font-size:12px;font-weight:500;color:var(--ink-soft);margin-left:2px;}
+
+  .alloc-card{background:var(--card);border-radius:16px;padding:20px 22px;border:1px solid var(--line);margin-bottom:22px;}
+  .alloc-card .label{font-size:12px;color:var(--ink-soft);font-weight:500;margin-bottom:12px;}
+  .alloc-bar{display:flex;height:14px;border-radius:8px;overflow:hidden;background:#F1F1F3;}
+  .alloc-legend{display:flex;gap:22px;margin-top:12px;font-size:12.5px;flex-wrap:wrap;}
+  .alloc-legend span.dot{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:6px;}
+
+  .card{background:var(--card);border-radius:18px;border:1px solid var(--line);overflow-x:auto;margin-bottom:20px;}
+  table{width:100%;border-collapse:collapse;font-size:13.5px;}
+  thead th{text-align:left;font-weight:600;font-size:12px;color:var(--ink-soft);padding:12px;border-bottom:1px solid var(--line);white-space:nowrap;}
+  tbody td{padding:8px 12px;border-bottom:1px solid var(--line);vertical-align:middle;white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  td.num, th.num{text-align:right;}
+
+  input[type=text], input[type=date], input[type=number]{
+    border:1px solid transparent;background:transparent;font-family:'Inter',sans-serif;
+    font-size:13.5px;color:var(--ink);padding:6px 8px;border-radius:8px;width:100%;
+    transition:border-color .15s, background .15s;}
+  input{min-width:70px;}
+  input:hover{background:rgba(255,255,255,.6);}
+  input:focus{outline:none;border-color:var(--accent);background:#fff;}
+  input[type=number]{text-align:right;}
+  select{border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 8px;font-family:'Inter',sans-serif;font-size:13px;color:var(--ink);width:100%;}
+
+  .computed{font-family:'Noto Serif TC',serif;font-weight:600;font-variant-numeric:tabular-nums;}
+  .del-btn{background:none;border:none;color:var(--ink-soft);cursor:pointer;font-size:15px;padding:3px 7px;border-radius:6px;line-height:1;}
+  .del-btn:hover{background:#FBEAE8;color:var(--danger);}
+  .mini-btn{font-size:11px;padding:5px 8px;border-radius:6px;border:1px solid var(--line);background:#fff;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+  .mini-btn:hover{background:#F5F5F7;}
+
+  tfoot td{padding:12px;font-weight:700;border-top:1.5px solid var(--ink);font-family:'Noto Serif TC',serif;font-variant-numeric:tabular-nums;}
+  tfoot .label{font-family:'Inter',sans-serif;font-weight:600;font-size:13px;color:var(--ink-soft);}
+
+  .empty{text-align:center;padding:46px 20px;color:var(--ink-soft);font-size:13.5px;}
+  .note{margin-top:2px;margin-bottom:20px;font-size:12px;color:var(--ink-soft);line-height:1.6;}
+
+  /* ---------- stock transposed table ---------- */
+  .stock-table tbody td{background:var(--gray-base);}
+  .stock-table th.metric-label, .stock-table td.metric-label{
+    position:sticky;left:0;background:var(--card);font-weight:600;color:var(--ink-soft);font-size:12.5px;
+    z-index:2;border-right:1px solid var(--line);}
+  .stock-table thead th.metric-label{background:var(--band-gray);color:var(--ink);}
+  .stock-head-th{position:relative;padding-top:30px !important;background:var(--band-gray) !important;}
+  .stock-col-head{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .stock-tag-input{font-weight:700;font-size:22px;text-align:center;border-radius:8px;padding:4px 2px;width:100%;}
+  .name-input{font-size:11px;opacity:.85;text-align:center;padding:1px 2px;width:100%;}
+  .head-del{position:absolute;top:6px;right:6px;color:var(--ink-soft);}
+  .head-del:hover{background:#FBEAE8;color:var(--danger);}
+  .price-cell{display:flex;gap:4px;align-items:center;justify-content:flex-end;}
+  .pay-cell{display:flex;gap:4px;align-items:center;}
+  .pay-cell select{flex:0 0 62px;padding:6px 4px;font-size:12.5px;}
+  .pay-cell input{flex:1;min-width:56px;}
+  .price-input{font-size:19px;font-weight:700;}
+  .price-updated{font-size:10px;color:var(--ink-soft);text-align:right;margin-top:2px;}
+  .section-divider td{background:var(--band-gray) !important;font-weight:600;color:var(--ink);font-size:12px;padding:10px 12px;letter-spacing:.3px;position:sticky;left:0;}
+  .total-col{background:var(--gray-alt) !important;}
+  .total-col-head{background:var(--band-gray) !important;color:var(--ink);}
+
+  .stock-table tr.row-band td{background:var(--band-gray);}
+  .stock-table tr.row-band td.metric-label{background:var(--band-gray);}
+  .stock-table tr.row-band td.total-col{background:var(--band-gray) !important;}
+  .stock-table tr.divider-top td{border-top:1.5px solid var(--ink);}
+
+  .stock-table tr.row-zebra-b td{background:#F1F1F3;}
+  .stock-table tr.row-zebra-b td.metric-label{background:#F1F1F3;}
+
+  /* ---------- fx chip bar ---------- */
+  .fx-bar{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--line);border-radius:16px;
+    padding:10px 14px;flex-wrap:wrap;margin-bottom:8px;}
+  .fx-label{font-size:12.5px;color:var(--ink-soft);font-weight:600;margin-right:2px;white-space:nowrap;}
+  .fx-chip{display:flex;align-items:center;gap:5px;background:#F5F5F7;border-radius:10px;padding:6px 10px;font-size:13px;}
+  .fx-chip .curr{font-weight:700;}
+  .fx-chip input{width:64px;padding:2px 4px;min-width:0;}
+  .fx-chip .nt{color:var(--ink-soft);font-size:12px;}
+  .fx-chip .del{cursor:pointer;color:var(--ink-soft);font-size:13px;padding:0 2px;}
+  .fx-chip .del:hover{color:var(--danger);}
+  .fx-add-btn{border:1px dashed var(--line);background:#fff;border-radius:10px;width:32px;height:32px;font-size:16px;
+    color:var(--ink-soft);cursor:pointer;}
+  .fx-add-btn:hover{background:#F5F5F7;}
+
+  @media (max-width:900px){
+    .app{flex-direction:column;}
+    .sidebar{width:100%;display:flex;padding:14px 12px;border-right:none;border-bottom:1px solid var(--line);overflow-x:auto;}
+    .logo{display:none;}
+    .nav-btn{width:auto;white-space:nowrap;margin-right:6px;margin-bottom:0;}
+    .stats{grid-template-columns:repeat(2,1fr);}
+    main{padding:20px 14px 70px;}
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="logo">資產整理</div>
+    <div class="status-text" id="syncStatus" style="margin:-14px 8px 16px;">☁ 連線中…</div>
+    <nav>
+      <button class="nav-btn active" data-tab="overview">總覽</button>
+      <button class="nav-btn" data-tab="stocks">股票／ETF</button>
+      <button class="nav-btn" data-tab="deposit">定存</button>
+      <button class="nav-btn" data-tab="checking">活存</button>
+    </nav>
+  </aside>
+
+  <main>
+
+    <!-- ===== 總覽 ===== -->
+    <section id="tab-overview" class="tab-panel active">
+      <div class="panel-header">
+        <div><h1>資產總覽</h1><p>股票／ETF 市值、定存、活存與年度配息一次掌握</p></div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="label">總資產（台幣等值）</div><div class="value" id="ovTotal">NT$0</div></div>
+        <div class="stat"><div class="label">股票／ETF 市值</div><div class="value" id="ovStockValue">NT$0</div></div>
+        <div class="stat"><div class="label">定存本息合計（台幣等值）</div><div class="value" id="ovDepositValue">NT$0</div></div>
+        <div class="stat"><div class="label">活存合計（台幣等值）</div><div class="value" id="ovCheckingValue">NT$0</div></div>
+        <div class="stat"><div class="label">本年度累計配息</div><div class="value" id="ovDividendValue">NT$0</div></div>
+      </div>
+
+      <div class="alloc-card">
+        <div class="label">資產配置比例</div>
+        <div class="alloc-bar" id="allocBar"></div>
+        <div class="alloc-legend" id="allocLegend"></div>
+      </div>
+    </section>
+
+    <!-- ===== 股票／ETF ===== -->
+    <section id="tab-stocks" class="tab-panel">
+      <div class="panel-header">
+        <div><h1>股票／ETF</h1><p>股票橫向排列，項目與每月配息直向對照，可自由新增或刪除欄位</p></div>
+        <div class="btn-row">
+          <button class="btn ghost" onclick="fetchAllPrices()">↻ 更新現價</button>
+          <button class="btn" onclick="addStock()">＋ 新增股票</button>
+        </div>
+      </div>
+
+      <div class="stats" style="grid-template-columns:repeat(2,1fr);">
+        <div class="stat"><div class="label">投資總金額（帳面市值合計）</div><div class="value" id="stockTotalValue">NT$0</div></div>
+        <div class="stat"><div class="label">總張數</div><div class="value" id="stockTotalLots">0<span class="unit">張</span></div></div>
+      </div>
+
+      <div class="card">
+        <table class="stock-table" id="stockTable"></table>
+      </div>
+      <div id="stockEmpty" class="empty" style="display:none;">目前沒有股票資料，點選「＋ 新增股票」開始建立</div>
+      <p class="note">帳面市值 = 張數 × 1000 × 即時股價。「第1～4次配息」可分別設定月份與每股金額，最多四次、只用到幾次就填幾次，下方每月配息會自動用「該次金額 × 張數 × 1000」算好，不用逐月手動輸入。「↻ 更新現價」會優先抓取每日官方收盤價（穩定可用），若能連上證交所即時行情也會一併嘗試。若這個檔案是用瀏覽器直接開啟本機檔案（file://）在使用，部分即時行情來源會因安全限制抓不到；跟你之前的其他工具一樣部署到 GitHub Pages（https://）之後成功率會提高很多。抓不到時仍可手動輸入，不影響其他功能。</p>
+    </section>
+
+    <!-- ===== 定存 ===== -->
+    <section id="tab-deposit" class="tab-panel">
+      <div class="panel-header">
+        <div><h1>定存整理表</h1><p>輸入本金、幣別、利率與起訖日，自動試算利息並換算台幣等值</p></div>
+        <button class="btn" onclick="addDeposit()">＋ 新增一筆</button>
+      </div>
+
+      <div class="fx-bar" id="fxBar"></div>
+      <div class="status-text fx-status" id="fxStatus" style="margin-bottom:16px;">尚未更新即時匯率，目前使用手動／預估匯率</div>
+
+      <div class="stats">
+        <div class="stat"><div class="label">定存筆數</div><div class="value" id="depCount">0</div></div>
+        <div class="stat"><div class="label">本金合計（台幣等值）</div><div class="value" id="depPrincipal">NT$0</div></div>
+        <div class="stat"><div class="label">利息合計（台幣等值）</div><div class="value" id="depInterest">NT$0</div></div>
+        <div class="stat"><div class="label">加權平均利率</div><div class="value" id="depRate">0<span class="unit">%</span></div></div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>銀行</th><th>幣別</th><th>本金</th><th>起存日</th><th>到期日</th>
+              <th class="num">利率（%）</th>
+              <th class="num">利息</th><th class="num">領回本息</th>
+              <th class="num total-col">台幣等值本息</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="depositBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="6" class="label">合計</td>
+              <td></td><td></td>
+              <td class="num" id="depFootTwd">NT$0</td><td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div id="depositEmpty" class="empty" style="display:none;">目前沒有定存資料，點選「＋ 新增一筆」開始建立</div>
+      <p class="note">利息試算：本金 × 利率 ÷ 100 × 天數 ÷ 365。非台幣定存會依匯率換算成台幣等值以利加總，實際到期結算以銀行為準。</p>
+    </section>
+
+    <!-- ===== 活存 ===== -->
+    <section id="tab-checking" class="tab-panel">
+      <div class="panel-header">
+        <div><h1>活存整理表</h1><p>記錄各帳戶活期存款餘額，依幣別自動換算台幣等值（不計利息、無到期日）</p></div>
+        <button class="btn" onclick="addChecking()">＋ 新增一筆</button>
+      </div>
+
+      <div class="fx-bar" id="fxBarChecking"></div>
+      <div class="status-text fx-status" style="margin-bottom:16px;">尚未更新即時匯率，目前使用手動／預估匯率</div>
+
+      <div class="stats" style="grid-template-columns:repeat(2,1fr);">
+        <div class="stat"><div class="label">帳戶筆數</div><div class="value" id="chkCount">0</div></div>
+        <div class="stat"><div class="label">餘額合計（台幣等值）</div><div class="value" id="chkTotal">NT$0</div></div>
+      </div>
+
+      <div class="card">
+        <table>
+          <thead>
+            <tr>
+              <th>銀行</th><th>幣別</th><th>金額</th>
+              <th class="num total-col">台幣等值</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="checkingBody"></tbody>
+          <tfoot>
+            <tr>
+              <td colspan="3" class="label">合計</td>
+              <td class="num" id="chkFootTwd">NT$0</td><td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div id="checkingEmpty" class="empty" style="display:none;">目前沒有活存資料，點選「＋ 新增一筆」開始建立</div>
+      <p class="note">活存跟定存共用同一組匯率設定；只要在任一頁籤調整過匯率，兩邊都會同步更新。</p>
+    </section>
+
+  </main>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
+
+<script>
+/* ---------- Firebase (cross-device sync) ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyDwf0Ge0-a5ivNRU9DRKJqP2p6KZih13Tw",
+  authDomain: "asset-planner-9dc43.firebaseapp.com",
+  databaseURL: "https://asset-planner-9dc43-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "asset-planner-9dc43",
+  storageBucket: "asset-planner-9dc43.firebasestorage.app",
+  messagingSenderId: "103754722961",
+  appId: "1:103754722961:web:baef17acc5e1cd08fc9930"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const ROOT = 'assetPlanner';
+
+let isApplyingRemote = false;
+const lastPushed = {stocks:null, deposits:null, checking:null, fx:null};
+const saveTimers = {};
+const syncedOnce = {stocks:false, deposits:false, checking:false, fx:false};
+
+function debouncedSave(kind, getValue){
+  if(isApplyingRemote) return;
+  clearTimeout(saveTimers[kind]);
+  saveTimers[kind]=setTimeout(()=>{
+    const val=getValue();
+    lastPushed[kind]=JSON.stringify(val);
+    db.ref(ROOT+'/'+kind).set(val).catch(()=>{
+      const el=document.getElementById('syncStatus');
+      if(el) el.textContent='☁ 同步失敗，請檢查網路';
+    });
+  }, 500);
+}
+function markSynced(){
+  if(Object.values(syncedOnce).every(Boolean)){
+    const el=document.getElementById('syncStatus');
+    if(el) el.textContent='☁ 已同步（跨裝置即時更新）';
+  }
+}
+function listenRemote(kind, onData){
+  db.ref(ROOT+'/'+kind).on('value', snap=>{
+    const val=snap.val();
+    const json=JSON.stringify(val==null?(kind==='fx'?{}:[]):val);
+    if(json===lastPushed[kind]) { syncedOnce[kind]=true; markSynced(); return; }
+    isApplyingRemote=true;
+    onData(val);
+    lastPushed[kind]=json;
+    isApplyingRemote=false;
+    syncedOnce[kind]=true;
+    markSynced();
+  }, ()=>{
+    const el=document.getElementById('syncStatus');
+    if(el) el.textContent='☁ 連線失敗，請檢查網路';
+  });
+}
+
+/* ---------- shared helpers ---------- */
+const MONTHS=['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+function fmt(n){ if(isNaN(n)||!isFinite(n)) return '0'; return Math.round(n).toLocaleString('en-US'); }
+function fmt1(n){ if(isNaN(n)||!isFinite(n)) return '0.0'; return n.toFixed(1); }
+function fmt2(n){ if(isNaN(n)||!isFinite(n)) return '0.00'; return n.toFixed(2); }
+function twd(n){ return 'NT$'+fmt(n); }
+function fmtMoneyInput(v){ const n=parseFloat(v); if(v===''||v==null||isNaN(n)) return ''; return n.toLocaleString('en-US'); }
+function num(v){ const n=parseFloat(v); return isNaN(n)?0:n; }
+
+/* ---------- tab switching ---------- */
+document.querySelectorAll('.nav-btn').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+  });
+});
+
+/* =====================================================
+   股票 / ETF  (columns = stocks, rows = fields; table is
+   built once per structural change, then patched in place
+   on every keystroke so inputs never lose focus)
+   ===================================================== */
+let stocks = [];
+
+function addStock(){
+  stocks.push({code:'', name:'', price:'', dividend:'', payTimes:'', lots:'', payments:[{month:'',amount:''},{month:'',amount:''},{month:'',amount:''},{month:'',amount:''}], priceUpdatedAt:''});
+  renderStockTable();
+}
+function deleteStock(i){ stocks.splice(i,1); renderStockTable(); }
+
+function updateStockField(i,key,val){
+  stocks[i][key]=val;
+  patchStocks();
+}
+function updateStockPayment(i,k,key,val){
+  if(!stocks[i].payments) stocks[i].payments=[{month:'',amount:''},{month:'',amount:''},{month:'',amount:''},{month:'',amount:''}];
+  stocks[i].payments[k][key]=val;
+  patchStocks();
+}
+function monthlyAmounts(s){
+  const shares=num(s.lots)*1000;
+  const amounts=new Array(12).fill(0);
+  (s.payments||[]).forEach(p=>{
+    const m=parseInt(p.month,10);
+    const amt=num(p.amount);
+    if(m>=1 && m<=12 && amt) amounts[m-1]+=amt*shares;
+  });
+  return amounts;
+}
+
+const STOCK_FIELDS = [
+  {key:'price', label:'即時股價'},
+  {key:'dividend', label:'歷年股利'},
+  {key:'payTimes', label:'配息次數／年'},
+  {key:'lots', label:'張數'},
+];
+
+function renderStockTable(){
+  const table=document.getElementById('stockTable');
+  const emptyEl=document.getElementById('stockEmpty');
+  table.innerHTML='';
+  emptyEl.style.display = stocks.length===0 ? 'block':'none';
+  if(stocks.length===0){ patchStocks(); return; }
+
+  const thead=document.createElement('thead');
+  const trh=document.createElement('tr');
+  let headHtml='<th class="metric-label">項目</th>';
+  stocks.forEach((s,i)=>{
+    headHtml+=`<th class="num stock-head-th">
+      <button class="del-btn head-del" onclick="deleteStock(${i})" title="刪除">✕</button>
+      <div class="stock-col-head">
+        <input class="stock-tag-input" type="text" placeholder="代號" value="${s.code}" oninput="updateStockField(${i},'code',this.value)">
+        <input id="name-${i}" class="name-input" type="text" placeholder="股票名稱" value="${s.name}" oninput="updateStockField(${i},'name',this.value)">
+      </div>
+    </th>`;
+  });
+  headHtml+='<th class="num total-col-head">合計</th>';
+  trh.innerHTML=headHtml;
+  thead.appendChild(trh);
+  table.appendChild(thead);
+
+  const tbody=document.createElement('tbody');
+
+  // 即時股價 with refresh button + last-updated line
+  let priceRow='<tr><td class="metric-label">即時股價</td>';
+  stocks.forEach((s,i)=>{
+    priceRow+=`<td class="num">
+      <div class="price-cell">
+        <input id="price-${i}" class="price-input" type="number" placeholder="0" value="${s.price}" oninput="updateStockField(${i},'price',this.value)">
+        <button class="mini-btn" onclick="fetchOnePrice(${i})" title="更新此股票現價">↻</button>
+      </div>
+      <div class="price-updated" id="priceUpdated-${i}">${s.priceUpdatedAt?('更新於 '+s.priceUpdatedAt):''}</div>
+    </td>`;
+  });
+  priceRow+='<td class="total-col"></td></tr>';
+  tbody.innerHTML+=priceRow;
+
+  // remaining fields
+  STOCK_FIELDS.filter(f=>f.key!=='price').forEach(f=>{
+    let row=`<tr><td class="metric-label">${f.label}</td>`;
+    stocks.forEach((s,i)=>{
+      row+=`<td class="num"><input type="number" placeholder="0" value="${s[f.key]}" oninput="updateStockField(${i},'${f.key}',this.value)"></td>`;
+    });
+    row+='<td class="total-col"></td></tr>';
+    tbody.innerHTML+=row;
+  });
+
+  // 帳面市值 (computed; same light gray band as the header/divider, with a bold divider line above it)
+  let mvRow='<tr class="row-band divider-top"><td class="metric-label">帳面市值</td>';
+  stocks.forEach((s,i)=>{ mvRow+=`<td class="num"><span class="computed" id="mv-${i}">NT$0</span></td>`; });
+  mvRow+='<td class="num total-col computed" id="mvtotal">NT$0</td></tr>';
+  tbody.innerHTML+=mvRow;
+
+  // up to 4 payments — each with its own month + per-share amount, since
+  // quarterly (or fewer) payouts are rarely equal in practice
+  for(let k=0;k<4;k++){
+    let row=`<tr><td class="metric-label">第${k+1}次配息</td>`;
+    stocks.forEach((s,i)=>{
+      const p=(s.payments&&s.payments[k])?s.payments[k]:{month:'',amount:''};
+      let monthOpts='<option value="">月份</option>';
+      MONTHS.forEach((_,mi)=>{ monthOpts+=`<option value="${mi+1}" ${String(p.month)===String(mi+1)?'selected':''}>${mi+1}月</option>`; });
+      row+=`<td>
+        <div class="pay-cell">
+          <select onchange="updateStockPayment(${i},${k},'month',this.value)">${monthOpts}</select>
+          <input type="number" placeholder="元/股" value="${p.amount}" oninput="updateStockPayment(${i},${k},'amount',this.value)">
+        </div>
+      </td>`;
+    });
+    row+='<td class="total-col"></td></tr>';
+    tbody.innerHTML+=row;
+  }
+
+  // divider
+  const colspan=stocks.length+2;
+  tbody.innerHTML+=`<tr class="section-divider"><td colspan="${colspan}">每月實際配息金額</td></tr>`;
+
+  // month rows — auto-calculated from the 4 payment slots above, zebra striped
+  MONTHS.forEach((label,m)=>{
+    const zebraCls = (m%2===1) ? ' row-zebra-b' : '';
+    let row=`<tr class="${zebraCls.trim()}"><td class="metric-label">${label}</td>`;
+    stocks.forEach((s,i)=>{
+      row+=`<td class="num"><span class="computed" id="month-${i}-${m}">NT$0</span></td>`;
+    });
+    row+=`<td class="num total-col computed" id="mtotal-${m}">NT$0</td></tr>`;
+    tbody.innerHTML+=row;
+  });
+
+  // 年總和 (bold divider line above, matching the deposit table's 合計 row)
+  let yrRow='<tr class="divider-top"><td class="metric-label">年總和</td>';
+  stocks.forEach((s,i)=>{ yrRow+=`<td class="num"><span class="computed" id="yr-${i}">NT$0</span></td>`; });
+  yrRow+='<td class="num total-col computed" id="yrtotal">NT$0</td></tr>';
+  tbody.innerHTML+=yrRow;
+
+  // 月平均
+  let avgRow='<tr><td class="metric-label">月平均</td>';
+  stocks.forEach((s,i)=>{ avgRow+=`<td class="num"><span class="computed" id="avg-${i}">NT$0</span></td>`; });
+  avgRow+='<td class="num total-col computed" id="avgtotal">NT$0</td></tr>';
+  tbody.innerHTML+=avgRow;
+
+  table.appendChild(tbody);
+  patchStocks();
+}
+
+/* patchStocks: recompute derived numbers and update only the
+   pre-existing computed elements (never rebuilds inputs) */
+function patchStocks(){
+  let totalMV=0, totalLots=0;
+  const monthTotals=new Array(12).fill(0);
+  let grandYear=0;
+
+  stocks.forEach((s,i)=>{
+    const price=num(s.price), lots=num(s.lots);
+    const mv=lots*1000*price;
+    totalMV+=mv; totalLots+=lots;
+    const mvEl=document.getElementById('mv-'+i);
+    if(mvEl) mvEl.textContent=twd(mv);
+
+    let yearTotal=0;
+    const amounts=monthlyAmounts(s);
+    amounts.forEach((val,m)=>{
+      yearTotal+=val; monthTotals[m]+=val;
+      const cell=document.getElementById(`month-${i}-${m}`);
+      if(cell) cell.textContent=twd(val);
+    });
+    grandYear+=yearTotal;
+    const yrEl=document.getElementById('yr-'+i);
+    if(yrEl) yrEl.textContent=twd(yearTotal);
+    const avgEl=document.getElementById('avg-'+i);
+    if(avgEl) avgEl.textContent=twd(yearTotal/12);
+  });
+
+  const mvTotalEl=document.getElementById('mvtotal');
+  if(mvTotalEl) mvTotalEl.textContent=twd(totalMV);
+
+  monthTotals.forEach((v,m)=>{
+    const el=document.getElementById('mtotal-'+m);
+    if(el) el.textContent=twd(v);
+  });
+  const yrTotalEl=document.getElementById('yrtotal');
+  if(yrTotalEl) yrTotalEl.textContent=twd(grandYear);
+  const avgTotalEl=document.getElementById('avgtotal');
+  if(avgTotalEl) avgTotalEl.textContent=twd(grandYear/12);
+
+  document.getElementById('stockTotalValue').textContent=twd(totalMV);
+  document.getElementById('stockTotalLots').innerHTML=fmt2(totalLots)+'<span class="unit">張</span>';
+
+  debouncedSave('stocks', ()=>stocks);
+  renderOverview();
+}
+
+/* live price fetch via TWSE public quote API, with a CORS-proxy
+   fallback for browsers/hosts that block the direct call.
+   Best-effort: manual entry always remains available if it fails. */
+async function tryFetchJson(url){
+  try{
+    const res=await fetch(url);
+    return await res.json();
+  }catch(e){ return null; }
+}
+async function fetchQuote(code){
+  // 1) FinMind daily close — a public API actually meant for client-side
+  //    use (CORS enabled), so this is the most reliable source. It
+  //    reflects the latest official closing price rather than an
+  //    intraday tick, which is fine for a once-a-day price refresh.
+  try{
+    const end=new Date();
+    const start=new Date(end.getTime()-14*24*60*60*1000); // look back 2 weeks to skip holidays/weekends
+    const iso=d=>d.toISOString().slice(0,10);
+    const url=`https://api.finmindtrade.com/api/v4/data?dataset=TaiwanStockPrice&data_id=${code}&start_date=${iso(start)}&end_date=${iso(end)}`;
+    const data=await tryFetchJson(url);
+    if(data && Array.isArray(data.data) && data.data.length){
+      const last=data.data[data.data.length-1];
+      if(last && last.close){ return {price:last.close, name:'', date:last.date}; }
+    }
+  }catch(e){ /* fall through to next source */ }
+
+  // 2) TWSE realtime tick — a bonus for intraday price when it works.
+  //    This endpoint isn't designed for third-party CORS use, so it
+  //    often fails when the page is opened as a local file:// document
+  //    (browsers send a "null" origin, which many servers reject).
+  //    It tends to work once the file is hosted over https, e.g. on
+  //    GitHub Pages.
+  const exs=['tse','otc'];
+  for(const ex of exs){
+    const direct=`https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${ex}_${code}.tw&json=1&_=${Date.now()}`;
+    let data=await tryFetchJson(direct);
+    if(!(data && data.msgArray && data.msgArray.length)){
+      const proxied='https://api.allorigins.win/raw?url='+encodeURIComponent(direct);
+      data=await tryFetchJson(proxied);
+    }
+    if(data && data.msgArray && data.msgArray.length){
+      const info=data.msgArray[0];
+      const z=info.z, y=info.y;
+      const price=(z && z!=='-') ? parseFloat(z) : parseFloat(y);
+      if(!isNaN(price)) return {price, name:info.n||''};
+    }
+  }
+  return null;
+}
+
+async function fetchOnePrice(i){
+  const s=stocks[i];
+  if(!s || !s.code){ alert('請先輸入股票代號'); return; }
+  const updEl=document.getElementById('priceUpdated-'+i);
+  if(updEl) updEl.textContent='更新中…';
+  const q=await fetchQuote(s.code.trim());
+  if(q){
+    s.price=q.price;
+    if(!s.name && q.name) s.name=q.name;
+    s.priceUpdatedAt = q.date ? (q.date+' 收盤價') : new Date().toLocaleString('zh-TW',{hour12:false});
+    const priceInput=document.getElementById('price-'+i);
+    if(priceInput) priceInput.value=q.price;
+    const nameInput=document.getElementById('name-'+i);
+    if(nameInput) nameInput.value=s.name;
+    if(updEl) updEl.textContent='更新於 '+s.priceUpdatedAt;
+    patchStocks();
+  } else {
+    if(updEl) updEl.textContent='更新失敗，請手動輸入';
+  }
+}
+async function fetchAllPrices(){
+  for(let i=0;i<stocks.length;i++){
+    if(stocks[i].code) await fetchOnePrice(i);
+  }
+}
+
+/* =====================================================
+   定存（含幣別／匯率）
+   ===================================================== */
+let deposits = [];
+const FALLBACK_TWD_RATE = {TWD:1, USD:31.8, JPY:0.205, CNY:4.4, EUR:34.5, GBP:40.0, HKD:4.07, AUD:21.0};
+const CURRENCIES=['TWD','USD','JPY','CNY','EUR','GBP','HKD','AUD'];
+let fxManual = {TWD:1};
+
+function twdRate(currency){
+  if(currency==='TWD') return 1;
+  if(fxManual[currency]!=null) return fxManual[currency];
+  return FALLBACK_TWD_RATE[currency]||1;
+}
+
+/* ---- fx chip bar ---- */
+function renderFxBar(){
+  document.querySelectorAll('.fx-bar').forEach(bar=>{
+    const wrapId=bar.id+'-add';
+    let html='<span class="fx-label">匯率（換算台幣）</span>';
+    html+='<button class="mini-btn" onclick="fetchFxRates()" title="抓即時匯率">↻ 即時匯率</button>';
+    Object.keys(fxManual).forEach(c=>{
+      const removable = c!=='TWD';
+      html+=`<span class="fx-chip">
+        <span class="curr">${c}</span><span>=</span>
+        <input type="number" step="0.0001" value="${fxManual[c]}" ${c==='TWD'?'disabled':''} oninput="updateFxRate('${c}',this.value)">
+        <span class="nt">NT$</span>
+        ${removable?`<span class="del" onclick="removeFxCurrency('${c}')" title="移除">✕</span>`:''}
+      </span>`;
+    });
+    html+=`<span id="${wrapId}"><button class="fx-add-btn" onclick="showFxAdd('${wrapId}')" title="新增幣別">＋</button></span>`;
+    bar.innerHTML=html;
+  });
+}
+function updateFxRate(c,val){ fxManual[c]=parseFloat(val)||1; debouncedSave('fx', ()=>fxManual); patchDeposits(); patchChecking(); }
+function removeFxCurrency(c){ delete fxManual[c]; debouncedSave('fx', ()=>fxManual); renderFxBar(); patchDeposits(); patchChecking(); }
+function showFxAdd(wrapId){
+  const wrap=document.getElementById(wrapId);
+  const remaining=CURRENCIES.filter(c=>!(c in fxManual));
+  if(remaining.length===0) return;
+  let opts='<option value="">選擇幣別</option>';
+  remaining.forEach(c=>opts+=`<option value="${c}">${c}</option>`);
+  wrap.innerHTML=`<select onchange="addFxCurrency(this.value)" style="width:100px;">${opts}</select>`;
+}
+function addFxCurrency(c){
+  if(!c) return;
+  fxManual[c]=FALLBACK_TWD_RATE[c]||1;
+  debouncedSave('fx', ()=>fxManual);
+  renderFxBar();
+  patchDeposits();
+  patchChecking();
+}
+async function fetchFxRates(){
+  const statusEls=document.querySelectorAll('.fx-status');
+  statusEls.forEach(el=>el.textContent='更新中…');
+  try{
+    const res=await fetch('https://open.er-api.com/v6/latest/USD');
+    const data=await res.json();
+    if(data && data.result==='success' && data.rates && data.rates.TWD){
+      Object.keys(fxManual).forEach(c=>{
+        if(c==='TWD') return;
+        if(data.rates[c]) fxManual[c]=data.rates.TWD/data.rates[c];
+      });
+      debouncedSave('fx', ()=>fxManual);
+      renderFxBar();
+      patchDeposits();
+      patchChecking();
+      const t='匯率更新於 '+new Date().toLocaleString('zh-TW',{hour12:false});
+      statusEls.forEach(el=>el.textContent=t);
+    } else {
+      statusEls.forEach(el=>el.textContent='更新失敗，目前使用手動／預估匯率');
+    }
+  }catch(e){
+    statusEls.forEach(el=>el.textContent='更新失敗（可能無網路或跨網域限制），目前使用手動／預估匯率');
+  }
+}
+
+/* ---- deposit table ---- */
+function dayDiff(start,end){
+  if(!start||!end) return 0;
+  const diff=(new Date(end)-new Date(start))/(1000*60*60*24);
+  return diff>0?diff:0;
+}
+function calcDepositInterest(r){
+  const p=num(r.principal), rate=num(r.rate), days=dayDiff(r.start,r.end);
+  if(!days||!p||!rate) return 0;
+  return p*rate/100*days/365;
+}
+
+function addDeposit(){ deposits.push({bank:'',currency:'TWD',start:'',end:'',principal:'',rate:''}); renderDepositTable(); }
+function deleteDeposit(i){ deposits.splice(i,1); renderDepositTable(); }
+function updateDeposit(i,key,val){
+  deposits[i][key]=val;
+  if(key==='currency'){
+    if(!(val in fxManual)){ fxManual[val]=FALLBACK_TWD_RATE[val]||1; debouncedSave('fx', ()=>fxManual); }
+    renderFxBar();
+  }
+  patchDeposits();
+}
+
+function renderDepositTable(){
+  const tbody=document.getElementById('depositBody');
+  const emptyEl=document.getElementById('depositEmpty');
+  tbody.innerHTML='';
+  emptyEl.style.display = deposits.length===0 ? 'block':'none';
+
+  deposits.forEach((r,i)=>{
+    let currencyOptions='';
+    CURRENCIES.forEach(c=>{ currencyOptions+=`<option value="${c}" ${r.currency===c?'selected':''}>${c}</option>`; });
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input type="text" placeholder="銀行名稱" value="${r.bank}" oninput="updateDeposit(${i},'bank',this.value)"></td>
+      <td><select onchange="updateDeposit(${i},'currency',this.value)">${currencyOptions}</select></td>
+      <td><input type="text" inputmode="decimal" placeholder="0" value="${fmtMoneyInput(r.principal)}" onfocus="this.value=deposits[${i}].principal||''" oninput="updateDeposit(${i},'principal',this.value.replace(/[^0-9.]/g,''))" onblur="this.value=fmtMoneyInput(deposits[${i}].principal)"></td>
+      <td><input type="date" value="${r.start}" onchange="updateDeposit(${i},'start',this.value)"></td>
+      <td><input type="date" value="${r.end}" onchange="updateDeposit(${i},'end',this.value)"></td>
+      <td class="num"><input type="number" step="0.001" placeholder="0.00" value="${r.rate}" oninput="updateDeposit(${i},'rate',this.value)"></td>
+      <td class="num computed" id="dep-interest-${i}">0</td>
+      <td class="num computed" id="dep-payout-${i}">0</td>
+      <td class="num computed total-col" id="dep-twd-${i}">NT$0</td>
+      <td><button class="del-btn" onclick="deleteDeposit(${i})" title="刪除">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+
+  patchDeposits();
+}
+
+function patchDeposits(){
+  let totalTwd=0, weightedRateSumTwd=0, totalPrincipalTwd=0;
+
+  deposits.forEach((r,i)=>{
+    const interest=calcDepositInterest(r);
+    const p=num(r.principal);
+    const payout=p+interest;
+    const rate=twdRate(r.currency);
+    const twdPayout=payout*rate;
+    const twdPrincipal=p*rate;
+    const isTwd = r.currency==='TWD';
+
+    const intEl=document.getElementById('dep-interest-'+i);
+    if(intEl) intEl.textContent = isTwd ? twd(interest) : fmt(interest);
+    const payEl=document.getElementById('dep-payout-'+i);
+    if(payEl) payEl.textContent = isTwd ? twd(payout) : fmt(payout);
+    const twdEl=document.getElementById('dep-twd-'+i);
+    if(twdEl) twdEl.textContent=twd(twdPayout);
+
+    totalTwd+=twdPayout;
+    totalPrincipalTwd+=twdPrincipal;
+    weightedRateSumTwd+=twdPrincipal*num(r.rate);
+  });
+
+  document.getElementById('depCount').textContent=deposits.length;
+  document.getElementById('depPrincipal').textContent=twd(totalPrincipalTwd);
+  document.getElementById('depInterest').textContent=twd(totalTwd-totalPrincipalTwd);
+  const avgRate= totalPrincipalTwd>0 ? weightedRateSumTwd/totalPrincipalTwd : 0;
+  document.getElementById('depRate').innerHTML=avgRate.toFixed(3)+'<span class="unit">%</span>';
+  document.getElementById('depFootTwd').textContent=twd(totalTwd);
+
+  debouncedSave('deposits', ()=>deposits);
+  renderOverview();
+}
+
+/* =====================================================
+   活存（無利息、無到期日，只有幣別換算）
+   ===================================================== */
+let checking = [];
+
+function addChecking(){ checking.push({bank:'',currency:'TWD',amount:''}); renderCheckingTable(); }
+function deleteChecking(i){ checking.splice(i,1); renderCheckingTable(); }
+function updateChecking(i,key,val){
+  checking[i][key]=val;
+  if(key==='currency'){
+    if(!(val in fxManual)){ fxManual[val]=FALLBACK_TWD_RATE[val]||1; debouncedSave('fx', ()=>fxManual); }
+    renderFxBar();
+  }
+  patchChecking();
+}
+
+function renderCheckingTable(){
+  const tbody=document.getElementById('checkingBody');
+  const emptyEl=document.getElementById('checkingEmpty');
+  tbody.innerHTML='';
+  emptyEl.style.display = checking.length===0 ? 'block':'none';
+
+  checking.forEach((r,i)=>{
+    let currencyOptions='';
+    CURRENCIES.forEach(c=>{ currencyOptions+=`<option value="${c}" ${r.currency===c?'selected':''}>${c}</option>`; });
+
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><input type="text" placeholder="銀行名稱" value="${r.bank}" oninput="updateChecking(${i},'bank',this.value)"></td>
+      <td><select onchange="updateChecking(${i},'currency',this.value)">${currencyOptions}</select></td>
+      <td><input type="text" inputmode="decimal" placeholder="0" value="${fmtMoneyInput(r.amount)}" onfocus="this.value=checking[${i}].amount||''" oninput="updateChecking(${i},'amount',this.value.replace(/[^0-9.]/g,''))" onblur="this.value=fmtMoneyInput(checking[${i}].amount)"></td>
+      <td class="num computed total-col" id="chk-twd-${i}">NT$0</td>
+      <td><button class="del-btn" onclick="deleteChecking(${i})" title="刪除">✕</button></td>`;
+    tbody.appendChild(tr);
+  });
+
+  patchChecking();
+}
+
+function patchChecking(){
+  let total=0;
+  checking.forEach((r,i)=>{
+    const twdAmt=num(r.amount)*twdRate(r.currency);
+    total+=twdAmt;
+    const el=document.getElementById('chk-twd-'+i);
+    if(el) el.textContent=twd(twdAmt);
+  });
+  document.getElementById('chkCount').textContent=checking.length;
+  document.getElementById('chkTotal').textContent=twd(total);
+  document.getElementById('chkFootTwd').textContent=twd(total);
+  debouncedSave('checking', ()=>checking);
+  renderOverview();
+}
+
+/* =====================================================
+   總覽
+   ===================================================== */
+function renderOverview(){
+  const stockValue = stocks.reduce((a,s)=>a+num(s.lots)*1000*num(s.price),0);
+  const dividendTotal = stocks.reduce((a,s)=>a+monthlyAmounts(s).reduce((x,v)=>x+v,0),0);
+
+  let depositTwd=0;
+  deposits.forEach(r=>{
+    const interest=calcDepositInterest(r);
+    const payout=num(r.principal)+interest;
+    depositTwd+=payout*twdRate(r.currency);
+  });
+
+  let checkingTwd=0;
+  checking.forEach(r=>{ checkingTwd+=num(r.amount)*twdRate(r.currency); });
+
+  const total=stockValue+depositTwd+checkingTwd;
+
+  document.getElementById('ovTotal').textContent=twd(total);
+  document.getElementById('ovStockValue').textContent=twd(stockValue);
+  document.getElementById('ovDepositValue').textContent=twd(depositTwd);
+  document.getElementById('ovCheckingValue').textContent=twd(checkingTwd);
+  document.getElementById('ovDividendValue').textContent=twd(dividendTotal);
+
+  const bar=document.getElementById('allocBar');
+  const legend=document.getElementById('allocLegend');
+  bar.innerHTML=''; legend.innerHTML='';
+  if(total<=0){
+    legend.innerHTML='<span style="color:var(--ink-soft)">尚無資產資料</span>';
+  } else {
+    const stockPct=stockValue/total*100;
+    const depositPct=depositTwd/total*100;
+    const checkingPct=checkingTwd/total*100;
+    bar.innerHTML=`<div style="width:${stockPct}%;background:var(--accent);"></div><div style="width:${depositPct}%;background:var(--sand);"></div><div style="width:${checkingPct}%;background:var(--mint);"></div>`;
+    legend.innerHTML=`
+      <span><span class="dot" style="background:var(--accent);"></span>股票／ETF ${fmt1(stockPct)}%</span>
+      <span><span class="dot" style="background:var(--sand);"></span>定存 ${fmt1(depositPct)}%</span>
+      <span><span class="dot" style="background:var(--mint);"></span>活存 ${fmt1(checkingPct)}%</span>`;
+  }
+}
+
+/* ---------- initial render (shows immediately, then Firebase fills in) ---------- */
+renderStockTable();
+renderFxBar();
+renderDepositTable();
+renderCheckingTable();
+renderOverview();
+
+/* ---------- attach Firebase listeners (cross-device sync) ---------- */
+listenRemote('stocks', val=>{ stocks = val || []; renderStockTable(); });
+listenRemote('deposits', val=>{ deposits = val || []; renderDepositTable(); });
+listenRemote('checking', val=>{ checking = val || []; renderCheckingTable(); });
+listenRemote('fx', val=>{ fxManual = (val && Object.keys(val).length) ? val : {TWD:1}; renderFxBar(); patchDeposits(); patchChecking(); });
+</script>
+</body>
+</html>

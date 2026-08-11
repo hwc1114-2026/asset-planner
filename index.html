@@ -184,7 +184,6 @@
         <div class="stat"><div class="label">股票／ETF 市值</div><div class="value" id="ovStockValue">NT$0</div></div>
         <div class="stat"><div class="label">定存本息合計（台幣等值）</div><div class="value" id="ovDepositValue">NT$0</div></div>
         <div class="stat"><div class="label">活存合計（台幣等值）</div><div class="value" id="ovCheckingValue">NT$0</div></div>
-        <div class="stat"><div class="label">本年度累計配息</div><div class="value" id="ovDividendValue">NT$0</div></div>
       </div>
 
       <div class="alloc-card">
@@ -204,8 +203,9 @@
         </div>
       </div>
 
-      <div class="stats" style="grid-template-columns:repeat(2,1fr);">
+      <div class="stats" style="grid-template-columns:repeat(3,1fr);">
         <div class="stat"><div class="label">投資總金額（帳面市值合計）</div><div class="value" id="stockTotalValue">NT$0</div></div>
+        <div class="stat"><div class="label">本年度累計配息</div><div class="value" id="stockDividendValue">NT$0</div></div>
         <div class="stat"><div class="label">總張數</div><div class="value" id="stockTotalLots">0<span class="unit">張</span></div></div>
       </div>
 
@@ -599,6 +599,7 @@ function patchStocks(){
   if(avgTotalEl) avgTotalEl.textContent=twd(grandYear/12);
 
   document.getElementById('stockTotalValue').textContent=twd(totalMV);
+  document.getElementById('stockDividendValue').textContent=twd(grandYear);
   document.getElementById('stockTotalLots').innerHTML=fmt2(totalLots)+'<span class="unit">張</span>';
 
   debouncedSave('stocks', ()=>stocks);
@@ -904,7 +905,6 @@ function patchChecking(){
    ===================================================== */
 function renderOverview(){
   const stockValue = stocks.reduce((a,s)=>a+num(s.lots)*1000*num(s.price),0);
-  const dividendTotal = stocks.reduce((a,s)=>a+((s.months||[]).reduce((x,v)=>x+num(v),0)),0);
 
   let depositTwd=0;
   deposits.forEach(r=>{
@@ -922,7 +922,6 @@ function renderOverview(){
   document.getElementById('ovStockValue').textContent=twd(stockValue);
   document.getElementById('ovDepositValue').textContent=twd(depositTwd);
   document.getElementById('ovCheckingValue').textContent=twd(checkingTwd);
-  document.getElementById('ovDividendValue').textContent=twd(dividendTotal);
 
   const bar=document.getElementById('allocBar');
   const legend=document.getElementById('allocLegend');

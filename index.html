@@ -298,6 +298,7 @@
 </div>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js"></script>
 
 <script>
@@ -364,6 +365,14 @@ function attachRemoteListener(kind, onData){
    after the user had already started typing into an empty local table,
    wiping out those first edits. */
 async function initSync(){
+  try{
+    await firebase.auth().signInAnonymously();
+  }catch(e){
+    const el=document.getElementById('syncStatus');
+    if(el) el.textContent='☁ 尚未開啟匿名登入，請到 Firebase 主控台開啟';
+    return;
+  }
+
   const [stocksSnap, depositsSnap, checkingSnap, fxSnap] = await Promise.all([
     db.ref(ROOT+'/stocks').once('value').catch(()=>null),
     db.ref(ROOT+'/deposits').once('value').catch(()=>null),
